@@ -8,11 +8,12 @@ import {
   DialogTitle,
   Field,
   FluentProvider,
+  Input,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
 // biome-ignore lint/style/useImportType: The classic JSX transform requires React at runtime.
-import React from 'react';
+import React, { useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { getVsCodeFluentTheme, useTypographyStyles } from '../fluentTheme';
 
@@ -27,10 +28,14 @@ export interface SchemaNodePropertiesViewModel {
   nodeName: string;
   rows: SchemaNodePropertyRow[];
   description?: string;
+  canEditConstant?: boolean;
+  constantValue?: string;
 }
 
 export interface SchemaNodePropertiesCallbacks {
   onClose(): void;
+  onSaveConstant?(value: string): void;
+  onRemoveConstant?(): void;
 }
 
 const useStyles = makeStyles({
@@ -42,15 +47,22 @@ const useStyles = makeStyles({
   value: { color: tokens.colorNeutralForeground1, overflowWrap: 'anywhere' },
   xpath: { fontFamily: tokens.fontFamilyMonospace },
   description: { color: tokens.colorNeutralForeground2, lineHeight: tokens.lineHeightBase300 },
+  constantField: { marginTop: tokens.spacingVerticalM },
 });
 
 interface SchemaNodePropertiesDialogViewProps extends SchemaNodePropertiesCallbacks {
   model: SchemaNodePropertiesViewModel;
 }
 
-function SchemaNodePropertiesDialogView({ model, onClose }: SchemaNodePropertiesDialogViewProps): React.ReactElement {
+function SchemaNodePropertiesDialogView({
+  model,
+  onClose,
+  onSaveConstant,
+  onRemoveConstant,
+}: SchemaNodePropertiesDialogViewProps): React.ReactElement {
   const styles = useStyles();
   const typographyStyles = useTypographyStyles();
+  const [constantValue, setConstantValue] = useState(model.constantValue ?? '');
   return (
     <FluentProvider theme={getVsCodeFluentTheme()} style={{ display: 'contents' }}>
       <Dialog
@@ -81,12 +93,31 @@ function SchemaNodePropertiesDialogView({ model, onClose }: SchemaNodeProperties
                     <div className={styles.description}>{model.description}</div>
                   </Field>
                 ) : null}
+                {model.canEditConstant ? (
+                  <Field
+                    className={styles.constantField}
+                    label="Constant value"
+                    hint="This value is written directly to the selected target node. An empty value is preserved as an explicit empty constant."
+                  >
+                    <Input id="schema-constant-value" value={constantValue} onChange={(_event, data) => setConstantValue(data.value)} />
+                  </Field>
+                ) : null}
               </div>
             </DialogContent>
             <DialogActions>
-              <Button id="schema-properties-close" appearance="primary" onClick={onClose}>
+              <Button id="schema-properties-close" appearance={model.canEditConstant ? undefined : 'primary'} onClick={onClose}>
                 Close
               </Button>
+              {model.canEditConstant && model.constantValue !== undefined ? (
+                <Button id="schema-constant-remove" onClick={onRemoveConstant}>
+                  Remove Constant
+                </Button>
+              ) : null}
+              {model.canEditConstant ? (
+                <Button id="schema-constant-save" appearance="primary" onClick={() => onSaveConstant?.(constantValue)}>
+                  Save Constant
+                </Button>
+              ) : null}
             </DialogActions>
           </DialogBody>
         </DialogSurface>
@@ -129,7 +160,7 @@ export class SchemaNodePropertiesDialog extends HTMLElement {
       return;
     }
     this.reactRoot ??= createRoot(this);
-    this.reactRoot.render(<SchemaNodePropertiesDialogView key={this.renderVersion} model={this.model} onClose={this.callbacks.onClose} />);
+    this.reactRoot.render(<SchemaNodePropertiesDialogView key={this.renderVersion} model={this.model} {...this.callbacks} />);
   }
 }
 

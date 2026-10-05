@@ -607,6 +607,50 @@ export class MapperAppController {
     return resolvedValues;
   }
 
+  private getTargetValueKeys(nodePath: string): string[] {
+    if (!this.state.targetSchema || !this.state.map?.targetValues) {
+      return [];
+    }
+
+    const resolver = new SchemaPathResolver<SchemaNodeView>(
+      this.state.targetSchema,
+      this.state.map.options?.ignoreNamespacesForLinks ?? false
+    );
+    return Object.keys(this.state.map.targetValues).filter((path) => resolver.resolve(path)?.path === nodePath);
+  }
+
+  private saveTargetConstant(nodePath: string, value: string): void {
+    if (!this.state.map) {
+      return;
+    }
+
+    const targetValues = (this.state.map.targetValues ??= {});
+    const existingKeys = this.getTargetValueKeys(nodePath);
+    const persistedPath = existingKeys[0] ?? nodePath;
+    for (const key of existingKeys) {
+      delete targetValues[key];
+    }
+    targetValues[persistedPath] = value;
+    this.updateMap(this.state.map);
+    this.closeSchemaNodeProperties();
+    this.renderView();
+    this.showNotification('Target constant updated', 'success');
+  }
+
+  private removeTargetConstant(nodePath: string): void {
+    if (!this.state.map?.targetValues) {
+      return;
+    }
+
+    for (const key of this.getTargetValueKeys(nodePath)) {
+      delete this.state.map.targetValues[key];
+    }
+    this.updateMap(this.state.map);
+    this.closeSchemaNodeProperties();
+    this.renderView();
+    this.showNotification('Target constant removed', 'success');
+  }
+
   private configureCanvas(): void {
     this.canvas?.configure(this.state, {
       onLinkSelect: (linkId) => {
@@ -803,6 +847,7 @@ export class MapperAppController {
     const node = properties.node;
     const occurrence = `${node.minOccurs ?? (node.isOptional ? 0 : 1)}..${node.maxOccurs ?? 1}`;
     const configuredValue = properties.side === 'target' ? this.getResolvedTargetValues()[node.path] : undefined;
+    const canEditConstant = properties.side === 'target' && (node.children?.length ?? 0) === 0;
     const rawRows: [string, string | number | boolean | undefined][] = [
       ['XPath', node.path],
       ['Node kind', node.type || 'element'],
@@ -834,8 +879,14 @@ export class MapperAppController {
         nodeName: node.name,
         rows,
         description: node.annotation,
+        canEditConstant,
+        constantValue: configuredValue,
       },
-      { onClose: () => this.closeSchemaNodeProperties() }
+      {
+        onClose: () => this.closeSchemaNodeProperties(),
+        onSaveConstant: canEditConstant ? (value) => this.saveTargetConstant(node.path, value) : undefined,
+        onRemoveConstant: canEditConstant ? () => this.removeTargetConstant(node.path) : undefined,
+      }
     );
   }
 

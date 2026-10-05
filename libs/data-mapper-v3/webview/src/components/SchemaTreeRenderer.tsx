@@ -186,7 +186,9 @@ function SchemaTreeView({
           className="tree-node"
           data-path={node.path}
           data-side={side}
-          title="Double-click to view node properties"
+          title={
+            side === 'target' ? 'Double-click to edit the constant value or view node properties' : 'Double-click to view node properties'
+          }
           onDoubleClick={(event) => {
             event.stopPropagation();
             onNodeDoubleClick?.(node);
