@@ -449,14 +449,22 @@
 	width: clamp(220px, 24%, 320px);
 	min-width: 220px;
 	max-width: 320px;
-	overflow-y: auto;
+	overflow: hidden;
 	flex: 0 0 clamp(220px, 24%, 320px);
 	background: var(--vscode-editor-background);
 }
-.schema-tree-container > biztalk-schema-tree,
-.schema-tree-container > biztalk-empty-schema {
+.schema-tree-container > biztalk-schema-tree:not([hidden]),
+.schema-tree-container > biztalk-empty-schema:not([hidden]) {
 	display: block;
 	height: 100%;
+	min-height: 0;
+}
+.schema-tree-container > biztalk-schema-tree:not([hidden]) {
+	overflow-x: hidden;
+	overflow-y: auto;
+}
+.schema-tree-container > [hidden] {
+	display: none;
 }
 .schema-tree-container.source-tree {
 	border-right: 1px solid var(--vscode-panel-border, #333);
@@ -853,6 +861,16 @@
 	background: #b71c1c;
 	color: #fff;
 }
+biztalk-mapper-notification[hidden] {
+	display: none;
+}
+biztalk-copilot-panel:not([hidden]),
+biztalk-mapper-notification:not([hidden]) {
+	display: contents;
+}
+biztalk-copilot-panel[hidden] {
+	display: none;
+}
 .notif-header {
 	display: flex;
 	justify-content: space-between;
@@ -946,8 +964,9 @@
 }
 
 .functoid-properties-panel {
-	width: min(760px, calc(100vw - 32px));
-	min-width: min(620px, calc(100vw - 32px));
+	width: 100%;
+	min-width: 0;
+	box-sizing: border-box;
 	padding: 0;
 	overflow: hidden;
 }
@@ -1336,10 +1355,6 @@
 }
 
 @media (max-width: 680px) {
-	.functoid-properties-panel {
-		min-width: 0;
-	}
-
 	.functoid-dialog-tabs {
 		overflow-x: auto;
 	}

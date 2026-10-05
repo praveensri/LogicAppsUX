@@ -67,17 +67,25 @@ export interface FunctoidConfigCallbacks {
 
 const useStyles = makeStyles({
   surface: {
-    width: '580px',
+    width: '760px',
     height: '540px',
-    maxWidth: '90vw',
-    maxHeight: '90vh',
+    maxWidth: 'calc(100vw - 32px)',
+    maxHeight: 'calc(100vh - 32px)',
     overflow: 'hidden',
   },
-  body: { height: '100%', minHeight: 0 },
+  body: {
+    display: 'grid',
+    gridTemplateRows: 'auto minmax(0, 1fr) auto',
+    width: '100%',
+    height: '100%',
+    minHeight: 0,
+    minWidth: 0,
+    boxSizing: 'border-box',
+    overflow: 'hidden',
+  },
   content: {
     display: 'flex',
     flexDirection: 'column',
-    height: '100%',
     minHeight: 0,
     overflow: 'hidden',
   },
@@ -168,7 +176,7 @@ const useStyles = makeStyles({
   fallbackInput: { width: '70%' },
   empty: { color: tokens.colorNeutralForeground3, padding: `${tokens.spacingVerticalS} 0` },
   fields: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM, paddingTop: tokens.spacingVerticalM },
-  actions: { paddingBottom: '18px' },
+  actions: { flexShrink: 0, paddingBottom: '18px' },
 });
 
 function expectedInputsText(minInputs: number, maxInputs: number): string {
@@ -251,7 +259,7 @@ function FunctoidConfigDialogView({ model, onSave, onCancel }: FunctoidConfigDia
               <span className="config-title">{model.title}</span>
               <div className={`${styles.meta} ${typographyStyles.base}`}>{model.meta}</div>
             </DialogTitle>
-            <DialogContent className={styles.content}>
+            <DialogContent className={`functoid-dialog-content ${styles.content}`}>
               <div className={`functoid-dialog-description ${styles.descriptionBlock}`}>
                 <div className={`config-label ${styles.heading}`}>Description</div>
                 <div className={`${styles.description} ${typographyStyles.base}`}>{model.description}</div>

@@ -4,6 +4,8 @@ import { getFunctoidDisplayName } from './functoidDisplayName';
 import { createPortal } from 'react-dom';
 import type { MapFunctoid, MapLink, MapPage } from '../../../src/model/mapModel';
 import type { MapperViewState } from '../../../src/protocol/mapEditorProtocol';
+import { getContrastingTextColor, getFunctoidCategoryColor } from './functoidCategoryColors';
+import { fitFunctoidsToCanvas } from './functoidLayout';
 
 export interface CanvasCallbacks {
   onLinkSelect?: (linkId: string) => void;
@@ -16,6 +18,7 @@ export interface CanvasCallbacks {
   onFunctoidInputPointerUp?: (functoidId: string) => void;
   onFunctoidOutputPointerUp?: (functoidId: string) => void;
   onLinkPointerDown?: (clientX: number, clientY: number) => void;
+  onFunctoidLayoutNormalized?: () => void;
   onDeselect?: () => void;
 }
 
@@ -40,17 +43,6 @@ interface DragTarget {
   offsetX: number;
   offsetY: number;
 }
-
-const accents: Record<string, string> = {
-  String: '#4caf50',
-  Math: '#9c27b0',
-  Logical: '#ff9800',
-  DateTime: '#03a9f4',
-  Conversion: '#8bc34a',
-  Scientific: '#e91e63',
-  Advanced: '#607d8b',
-  Custom: '#795548',
-};
 
 interface LinkPreviewHandle {
   show(start: Point, end: Point): void;
@@ -81,8 +73,7 @@ const LinkPreview = forwardRef<LinkPreviewHandle>(function LinkPreview(_props, r
     return null;
   }
 
-  const controlOffset = Math.max(Math.abs(points.end.x - points.start.x) * 0.4, 40);
-  const path = `M ${points.start.x} ${points.start.y} C ${points.start.x + controlOffset} ${points.start.y}, ${points.end.x - controlOffset} ${points.end.y}, ${points.end.x} ${points.end.y}`;
+  const path = `M ${points.start.x} ${points.start.y} L ${points.end.x} ${points.end.y}`;
   return (
     <path
       className="mapping-link-preview"
@@ -172,9 +163,7 @@ function LinkPath({
   selected: boolean;
   onSelect(): void;
 }): React.ReactElement {
-  const dx = Math.abs(to.x - from.x);
-  const controlOffset = Math.max(dx * 0.4, 40);
-  const path = `M ${from.x} ${from.y} C ${from.x + controlOffset} ${from.y}, ${to.x - controlOffset} ${to.y}, ${to.x} ${to.y}`;
+  const path = `M ${from.x} ${from.y} L ${to.x} ${to.y}`;
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -278,6 +267,8 @@ function FunctoidNode({
 }): React.ReactElement {
   const clickTimer = useRef<number | null>(null);
   const connectorPointerStarted = useRef<'input' | 'output' | null>(null);
+  const categoryColor = getFunctoidCategoryColor(functoid.category);
+  const textColor = getContrastingTextColor(categoryColor);
 
   return (
     <g
@@ -322,11 +313,11 @@ function FunctoidNode({
         width={functoidWidth}
         height={functoidHeight}
         rx={functoidHalfHeight}
-        fill="var(--vscode-editor-background, #1e1e1e)"
-        stroke={selected ? '#007fd4' : accents[functoid.category] || '#9e9e9e'}
-        strokeWidth={selected ? 2 : 1}
+        fill={categoryColor}
+        stroke={selected ? 'var(--vscode-focusBorder, #007fd4)' : categoryColor}
+        strokeWidth={selected ? 3 : 1}
       />
-      <text textAnchor="middle" dominantBaseline="middle" fill="var(--vscode-foreground, #fff)" fontSize="10">
+      <text textAnchor="middle" dominantBaseline="middle" fill={textColor} fontSize="10" fontWeight="600">
         {getDisplayName(functoid.name)}
       </text>
       <circle
@@ -563,14 +554,18 @@ export class MappingCanvas extends HTMLElement {
   public renderWithPositions(positions: Map<string, Point>, page: MapPage | null, renderFullCanvas = true): void {
     this.positions = new Map(positions);
     this.page = page;
+    const canvasRect = this.getBoundingClientRect();
+    const layoutNormalized = !!page && fitFunctoidsToCanvas(page.functoids, canvasRect.width, canvasRect.height);
+    if (layoutNormalized) {
+      this.callbacks.onFunctoidLayoutNormalized?.();
+    }
     this.functoidsById = new Map(page?.functoids.map((functoid) => [functoid.id, functoid]) ?? []);
 
     const mappingArea = this.closest('.mapping-area');
-    const canvasRect = this.getBoundingClientRect();
     const areaRect = mappingArea?.getBoundingClientRect();
     this.offsetX = areaRect ? canvasRect.left - areaRect.left : 0;
     this.offsetY = areaRect ? canvasRect.top - areaRect.top : 0;
-    if (!renderFullCanvas && this.linksOverlayRef.current) {
+    if (!renderFullCanvas && !layoutNormalized && this.linksOverlayRef.current) {
       this.linksOverlayRef.current.redraw();
     } else {
       this.renderReact();

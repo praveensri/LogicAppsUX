@@ -95,7 +95,7 @@ function SchemaTreeView({
   const pointerStartedPath = useRef<string | null>(null);
   const expandablePaths = new Set<string>();
   collectExpandablePaths(schema.rootElement, expandablePaths);
-  const isFullyExpanded = Array.from(expandablePaths).every((path) => expandedPaths.has(path));
+  const hasExpandedNodes = expandedPaths.size > 0;
 
   useLayoutEffect(() => {
     onExpansionChange();
@@ -235,18 +235,14 @@ function SchemaTreeView({
             />
             <Button
               appearance="subtle"
-              aria-label={`${isFullyExpanded ? 'Collapse' : 'Expand'} all schema nodes`}
+              aria-label={`${hasExpandedNodes ? 'Collapse' : 'Expand'} all schema nodes`}
               className="schema-btn schema-expand-collapse-btn"
-              icon={isFullyExpanded ? <ChevronDoubleUp16Regular /> : <ChevronDoubleDown16Regular />}
+              icon={hasExpandedNodes ? <ChevronDoubleUp16Regular /> : <ChevronDoubleDown16Regular />}
               size="small"
-              title={isFullyExpanded ? 'Collapse All' : 'Expand All'}
+              title={hasExpandedNodes ? 'Collapse All' : 'Expand All'}
               onClick={() => {
-                if (isFullyExpanded) {
-                  const paths = new Set<string>();
-                  if (schema.rootElement) {
-                    paths.add(schema.rootElement.path);
-                  }
-                  setExpandedPaths(paths);
+                if (hasExpandedNodes) {
+                  setExpandedPaths(new Set());
                 } else {
                   setExpandedPaths(expandablePaths);
                 }

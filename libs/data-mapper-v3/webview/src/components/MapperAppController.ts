@@ -612,6 +612,7 @@ export class MapperAppController {
         this.onFunctoidConnectorPointerUp(fId, 'output');
       },
       onLinkPointerDown: (clientX, clientY) => this.beginLinkPointer(clientX, clientY),
+      onFunctoidLayoutNormalized: () => this.updateMap(this.state.map),
       onDeselect: () => {
         this.state.selectedLink = null;
         this.state.selectedFunctoid = null;

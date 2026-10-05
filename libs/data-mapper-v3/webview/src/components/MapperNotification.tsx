@@ -80,7 +80,6 @@ export class MapperNotification extends HTMLElement {
   }
 
   public connectedCallback(): void {
-    this.style.display = 'contents';
     this.renderReact();
   }
 
@@ -94,7 +93,9 @@ export class MapperNotification extends HTMLElement {
       return;
     }
     this.reactRoot ??= createRoot(this);
-    this.reactRoot.render(<NotificationView title={this.titleText} type={this.type} details={this.details} onClose={this.onClose} />);
+    this.reactRoot.render(
+      this.titleText ? <NotificationView title={this.titleText} type={this.type} details={this.details} onClose={this.onClose} /> : null
+    );
   }
 }
 

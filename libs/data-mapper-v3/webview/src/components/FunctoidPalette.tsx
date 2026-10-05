@@ -4,6 +4,7 @@ import { ChevronDown12Regular, ChevronRight12Regular, Search16Regular } from '@f
 import React, { useMemo, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { getVsCodeFluentTheme } from '../fluentTheme';
+import { getContrastingTextColor, getFunctoidCategoryColor } from './functoidCategoryColors';
 import { getFunctoidDisplayName } from './functoidDisplayName';
 
 const useStyles = makeStyles({
@@ -77,7 +78,6 @@ const useStyles = makeStyles({
     justifyContent: 'center',
     fontSize: '8px',
     fontWeight: 'bold',
-    color: 'white',
   },
   itemName: { minWidth: 0, overflow: 'hidden', fontSize: '13px', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
 });
@@ -94,17 +94,6 @@ interface FunctoidPaletteViewProps {
   functoids: FunctoidPaletteItem[];
   onSelect(functoid: FunctoidPaletteItem): void;
 }
-
-const categoryColors: Record<string, string> = {
-  String: '#4caf50',
-  Math: '#9c27b0',
-  Logical: '#ff9800',
-  DateTime: '#2196f3',
-  Conversion: '#8bc34a',
-  Scientific: '#e91e63',
-  Advanced: '#607d8b',
-  Custom: '#795548',
-};
 
 function FunctoidPaletteView({ functoids, onSelect }: FunctoidPaletteViewProps): React.ReactElement {
   const styles = useStyles();
@@ -164,26 +153,32 @@ function FunctoidPaletteView({ functoids, onSelect }: FunctoidPaletteViewProps):
             </Button>
             {isExpanded && (
               <div className={styles.categoryItems}>
-                {filteredItems.map((item) => (
-                  <Button
-                    appearance="transparent"
-                    className={`palette-item ${styles.item}`}
-                    title={item.tooltip || item.description || ''}
-                    draggable
-                    key={item.id}
-                    onClick={() => onSelect(item)}
-                    onDragStart={(event) => {
-                      event.dataTransfer.setData('functoid', JSON.stringify(item));
-                    }}
-                  >
-                    <span className={`${styles.itemContent} palette-item-content`}>
-                      <span className={`${styles.itemIcon} item-icon`} style={{ background: categoryColors[category] || '#9e9e9e' }}>
-                        fn
+                {filteredItems.map((item) => {
+                  const categoryColor = getFunctoidCategoryColor(category);
+                  return (
+                    <Button
+                      appearance="transparent"
+                      className={`palette-item ${styles.item}`}
+                      title={item.tooltip || item.description || ''}
+                      draggable
+                      key={item.id}
+                      onClick={() => onSelect(item)}
+                      onDragStart={(event) => {
+                        event.dataTransfer.setData('functoid', JSON.stringify(item));
+                      }}
+                    >
+                      <span className={`${styles.itemContent} palette-item-content`}>
+                        <span
+                          className={`${styles.itemIcon} item-icon`}
+                          style={{ background: categoryColor, color: getContrastingTextColor(categoryColor) }}
+                        >
+                          fn
+                        </span>
+                        <span className={`${styles.itemName} item-name`}>{getFunctoidDisplayName(item.name)}</span>
                       </span>
-                      <span className={`${styles.itemName} item-name`}>{getFunctoidDisplayName(item.name)}</span>
-                    </span>
-                  </Button>
-                ))}
+                    </Button>
+                  );
+                })}
               </div>
             )}
           </div>

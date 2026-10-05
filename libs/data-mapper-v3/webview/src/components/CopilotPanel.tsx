@@ -193,7 +193,6 @@ export class CopilotPanel extends HTMLElement {
   }
 
   public connectedCallback(): void {
-    this.style.display = 'contents';
     this.renderReact();
   }
 

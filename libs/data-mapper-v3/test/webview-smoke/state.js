@@ -45,6 +45,10 @@ runScenario('Page and Copilot shell state updates', async () => {
     await harness.waitFor(() => messages.at(-1)?.type === 'copilotPrompt');
     assert.equal(messages.at(-1)?.data.prompt, 'Rename this map to Copilot Map');
     assert.equal(messages.at(-1)?.data.activePage, 0);
+    const copilotPanel = document.querySelector('biztalk-copilot-panel');
+    click(harness, document.querySelector('[aria-label="Close Data Mapper Assistant"]'));
+    await harness.waitFor(() => copilotPanel.hidden);
+    assert.equal(dom.window.getComputedStyle(copilotPanel).display, 'none');
     assert.deepEqual(harness.browserErrors, []);
   } finally {
     harness.close();
