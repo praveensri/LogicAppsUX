@@ -1,4 +1,13 @@
-import { FunctoidCategory, LinkEndpointType, type MapPage, ParameterType, reconcilePageFunctoidLinks } from '../src/model';
+import {
+  findFunctoidCycleForNewLink,
+  findFunctoidCycles,
+  formatFunctoidCycle,
+  FunctoidCategory,
+  LinkEndpointType,
+  type MapPage,
+  ParameterType,
+  reconcilePageFunctoidLinks,
+} from '../src/model';
 
 function createPage(): MapPage {
   return {
@@ -59,6 +68,69 @@ describe('functoid graph reconciliation', () => {
       { index: 1, type: ParameterType.Link, value: 'input-2' },
       { index: 2, type: ParameterType.Link, value: 'input-1' },
     ]);
+  });
+
+  describe('functoid cycle detection', () => {
+    const graphPage = (): MapPage => ({
+      id: 'cycles',
+      name: 'Cycles',
+      functoids: ['a', 'b', 'c', 'd'].map((id) => ({
+        id,
+        functoidId: 107,
+        category: FunctoidCategory.String,
+        name: `Functoid ${id.toUpperCase()}`,
+        x: 0,
+        y: 0,
+        inputLinks: [],
+        outputLinks: [],
+        parameters: [],
+      })),
+      links: [
+        {
+          id: 'a-b',
+          sourceId: 'a',
+          targetId: 'b',
+          sourceType: LinkEndpointType.Functoid,
+          targetType: LinkEndpointType.Functoid,
+        },
+        {
+          id: 'b-c',
+          sourceId: 'b',
+          targetId: 'c',
+          sourceType: LinkEndpointType.Functoid,
+          targetType: LinkEndpointType.Functoid,
+        },
+      ],
+    });
+
+    test('detects whether a proposed direct or indirect link would create a cycle', () => {
+      const page = graphPage();
+
+      expect(findFunctoidCycleForNewLink(page, 'c', 'a')?.functoidIds).toEqual(['c', 'a', 'b', 'c']);
+      expect(findFunctoidCycleForNewLink(page, 'a', 'a')?.functoidIds).toEqual(['a', 'a']);
+      expect(findFunctoidCycleForNewLink(page, 'c', 'd')).toBeUndefined();
+    });
+
+    test('finds and formats cycles already present in a loaded map', () => {
+      const page = graphPage();
+      page.links.push({
+        id: 'c-a',
+        sourceId: 'c',
+        targetId: 'a',
+        sourceType: LinkEndpointType.Functoid,
+        targetType: LinkEndpointType.Functoid,
+      });
+
+      const cycles = findFunctoidCycles(page);
+
+      expect(cycles).toHaveLength(1);
+      expect(cycles[0].functoidIds[0]).toBe(cycles[0].functoidIds.at(-1));
+      expect(formatFunctoidCycle(page, cycles[0])).toContain('Functoid A (a)');
+    });
+
+    test('does not report an acyclic graph', () => {
+      expect(findFunctoidCycles(graphPage())).toEqual([]);
+    });
   });
 
   test('removes deleted links from functoid metadata and parameters', () => {

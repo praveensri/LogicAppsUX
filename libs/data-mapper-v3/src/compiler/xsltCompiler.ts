@@ -16,7 +16,7 @@
 import { XMLValidator } from 'fast-xml-parser';
 import { create } from 'xmlbuilder2';
 import type { MapDocument, MapPage, MapLink, MapFunctoid } from '../model';
-import { LinkEndpointType, SourceLinkOption, TargetLinkOption } from '../model';
+import { findFunctoidCycles, formatFunctoidCycle, LinkEndpointType, SourceLinkOption, TargetLinkOption } from '../model';
 import type { FunctoidDefinition } from '../functoids';
 import { FunctoidRegistry } from '../functoids';
 import type { SchemaTree, SchemaNode } from '../model/schemaModel';
@@ -159,6 +159,15 @@ export class XsltCompiler {
     }
     if (map.customExtensionXml && XMLValidator.validate(map.customExtensionXml) !== true) {
       this.errors.push({ message: 'Custom extension-object XML contains malformed XML' });
+    }
+    if (this.validateFunctoidCycles(map.pages)) {
+      return {
+        success: false,
+        extensionObjectXml: this.generateExtensionObjectXml(),
+        errors: this.errors,
+        warnings: this.warnings,
+        assemblyPaths: [],
+      };
     }
     if (map.customXslt !== undefined) {
       if (XMLValidator.validate(map.customXslt) !== true) {
@@ -401,6 +410,22 @@ export class XsltCompiler {
       this.validatePageSchemaRoot(page, 'source', sourceSchema?.rootElement?.name);
       this.validatePageSchemaRoot(page, 'target', targetSchema?.rootElement?.name);
     }
+  }
+
+  private validateFunctoidCycles(pages: MapPage[]): boolean {
+    let foundCycle = false;
+    for (const page of pages) {
+      for (const cycle of findFunctoidCycles(page)) {
+        foundCycle = true;
+        this.errors.push({
+          message: `[${page.name}] Circular functoid graph: ${formatFunctoidCycle(page, cycle)}`,
+          pageId: page.id,
+          pageName: page.name,
+          elementId: cycle.functoidIds[0],
+        });
+      }
+    }
+    return foundCycle;
   }
 
   private validatePageSchemaRoot(page: MapPage, side: 'source' | 'target', loadedRoot?: string): void {

@@ -13,7 +13,7 @@ jest.mock('vscode', () => {
   const base = jest.requireActual('vscode');
   return {
     ...base,
-    ViewColumn: { Beside: 2 },
+    ViewColumn: { Active: 1, Beside: 2 },
     window: { ...base.window, showTextDocument: jest.fn() },
     workspace: {
       ...base.workspace,
@@ -144,6 +144,12 @@ describe('map compilation and Test Map logging', () => {
     expect(logs()).not.toMatch(/private-input|private-output|private-script/);
     expect(outputChannel.warn).toHaveBeenCalledWith(`Compilation warning 1/1: ${JSON.stringify(warning)}`);
     expect(outputChannel.show).toHaveBeenCalledWith(true);
+    expect(vscode.window.showTextDocument).toHaveBeenCalledWith(
+      expect.objectContaining({ fsPath: expect.stringMatching(/private_output\.xml$/) }),
+      {
+        viewColumn: vscode.ViewColumn.Active,
+      }
+    );
     expect(host.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'testMapResult' }));
   });
 

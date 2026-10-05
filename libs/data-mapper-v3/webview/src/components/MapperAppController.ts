@@ -25,6 +25,8 @@ import {
   type MapperViewState,
 } from '../../../src/protocol/mapEditorProtocol';
 import { LinkEndpointType, ParameterType } from '../../../src/model/mapModel';
+import { findFunctoidCycleForNewLink, findFunctoidCycles, formatFunctoidCycle } from '../../../src/model/mapGraph';
+import { SchemaPathResolver } from '../../../src/schema/schemaPathResolver';
 
 interface ScriptingConfigDraft {
   functoidId: string;
@@ -356,7 +358,10 @@ export class MapperAppController {
         this.state.targetSchema = message.data.targetSchema;
         this.state.functoids = message.data.functoids;
         this.renderView();
-        setTimeout(() => this.redrawLinks(), 150);
+        setTimeout(() => {
+          this.redrawLinks();
+          this.showLoadedMapCycleWarning();
+        }, 150);
         break;
       }
       case 'documentChanged': {
@@ -547,7 +552,9 @@ export class MapperAppController {
   }
 
   private syncTarget(): void {
-    const signature = `${this.state.activePage}`;
+    const targetValues = this.getResolvedTargetValues();
+    const valueSignature = JSON.stringify(Object.entries(targetValues).sort(([left], [right]) => left.localeCompare(right)));
+    const signature = `${this.state.activePage}:${valueSignature}`;
     if (this.state.targetSchema) {
       this.elements.targetTree.hidden = false;
       this.elements.targetEmpty.hidden = true;
@@ -565,7 +572,8 @@ export class MapperAppController {
         (node) => this.openSchemaNodeProperties(node, 'target'),
         () => this.redrawLinks(),
         () => this.vscode.postMessage({ type: 'loadSchema', side: 'target' }),
-        this.getConnectedPaths('target')
+        this.getConnectedPaths('target'),
+        targetValues
       );
       this.targetTree = tree;
       this.lastTargetSchema = this.state.targetSchema;
@@ -578,6 +586,25 @@ export class MapperAppController {
       this.lastTargetSchema = undefined;
       this.lastTargetSignature = '';
     }
+  }
+
+  private getResolvedTargetValues(): Record<string, string> {
+    if (!this.state.targetSchema || !this.state.map?.targetValues) {
+      return {};
+    }
+
+    const resolver = new SchemaPathResolver<SchemaNodeView>(
+      this.state.targetSchema,
+      this.state.map.options?.ignoreNamespacesForLinks ?? false
+    );
+    const resolvedValues: Record<string, string> = {};
+    for (const [path, value] of Object.entries(this.state.map.targetValues)) {
+      const resolved = resolver.resolve(path);
+      if (resolved) {
+        resolvedValues[resolved.path] = value;
+      }
+    }
+    return resolvedValues;
   }
 
   private configureCanvas(): void {
@@ -775,6 +802,7 @@ export class MapperAppController {
     const properties = this.schemaNodeProperties!;
     const node = properties.node;
     const occurrence = `${node.minOccurs ?? (node.isOptional ? 0 : 1)}..${node.maxOccurs ?? 1}`;
+    const configuredValue = properties.side === 'target' ? this.getResolvedTargetValues()[node.path] : undefined;
     const rawRows: [string, string | number | boolean | undefined][] = [
       ['XPath', node.path],
       ['Node kind', node.type || 'element'],
@@ -787,6 +815,7 @@ export class MapperAppController {
       ['Nillable', node.nillable],
       ['Default value', node.defaultValue],
       ['Fixed value', node.fixedValue],
+      ['Constant value', configuredValue === '' ? '<empty>' : configuredValue],
     ];
     const rows: SchemaNodePropertyRow[] = rawRows
       .filter(([, value]) => value !== undefined && value !== '')
@@ -866,6 +895,17 @@ export class MapperAppController {
       this.updateStatusMessage('Link already exists');
       setTimeout(() => this.updateStatusMessage(''), 2000);
       return;
+    }
+
+    if (source.type === 'functoid' && target.type === 'functoid') {
+      const cycle = findFunctoidCycleForNewLink(page, source.id, target.id);
+      if (cycle) {
+        const details = formatFunctoidCycle(page, cycle);
+        this.pendingLink = null;
+        this.updateStatusMessage('Circular functoid links are not allowed');
+        this.showNotification('Link rejected: circular functoid graph', 'error', details);
+        return;
+      }
     }
 
     page.links.push({
@@ -1135,6 +1175,12 @@ export class MapperAppController {
     const page = this.state.map.pages[this.state.activePage];
     const issues: string[] = [];
 
+    for (const mapPage of this.state.map.pages) {
+      for (const cycle of findFunctoidCycles(mapPage)) {
+        issues.push(`✗ [${mapPage.name}] Circular functoid graph: ${formatFunctoidCycle(mapPage, cycle)}`);
+      }
+    }
+
     // Check links with missing endpoints
     for (const link of page.links) {
       if (!link.sourceId || !link.targetId) {
@@ -1168,6 +1214,22 @@ export class MapperAppController {
     }
 
     return issues;
+  }
+
+  private showLoadedMapCycleWarning(): void {
+    if (!this.state.map) {
+      return;
+    }
+    const cycles = this.state.map.pages.flatMap((page) =>
+      findFunctoidCycles(page).map((cycle) => `[${page.name}] ${formatFunctoidCycle(page, cycle)}`)
+    );
+    if (cycles.length > 0) {
+      this.showNotification(
+        `Loaded map contains ${cycles.length} circular functoid graph${cycles.length === 1 ? '' : 's'}`,
+        'error',
+        cycles.join('\n')
+      );
+    }
   }
 
   private runTestMap(): void {

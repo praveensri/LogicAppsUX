@@ -590,6 +590,21 @@
 	font-weight: 400;
 }
 
+.node-constant-value {
+	display: inline-block;
+	max-width: 120px;
+	overflow: hidden;
+	color: var(--vscode-textLink-foreground, #3794ff);
+	font-family: var(
+		--vscode-editor-font-family,
+		Consolas,
+		"Courier New",
+		monospace
+	);
+	font-size: 10px;
+	text-overflow: ellipsis;
+}
+
 .node-data-type {
 	display: none;
 	color: var(--vscode-descriptionForeground);

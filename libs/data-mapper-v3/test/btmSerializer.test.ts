@@ -100,6 +100,26 @@ describe('BtmSerializer', () => {
     expect(roundTrip.match(/<Script Language=/g)).toHaveLength(2);
   });
 
+  test('parses a legacy target-tree constant addressed by a TOM query', () => {
+    const query = "/*[local-name()='<Schema>']/*[local-name()='ShippingHistory']/*[local-name()='Completed']";
+    const xml = `
+            <mapsource Name="Target constant" Version="2">
+              <SrcTree/>
+              <TrgTree/>
+              <TreeValues>
+                <TestValues/>
+                <ConstantValues>
+                  <Value value="true" Query="/*[local-name()='&lt;Schema&gt;']/*[local-name()='ShippingHistory']/*[local-name()='Completed']"/>
+                </ConstantValues>
+              </TreeValues>
+              <Pages><Page Name="Page 1"><Links/><Functoids/></Page></Pages>
+            </mapsource>`;
+
+    const map = serializer.deserialize(xml);
+
+    expect(map.targetValues).toEqual({ [query]: 'true' });
+  });
+
   test('should create a new map', () => {
     const map = serializer.createNew('source.xsd', 'target.xsd', 'TestMap');
 

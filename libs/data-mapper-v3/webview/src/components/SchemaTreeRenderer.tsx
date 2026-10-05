@@ -59,6 +59,7 @@ interface SchemaTreeViewProps {
   side: SchemaSide;
   initialExpanded: Set<string>;
   connectedPaths: Set<string>;
+  nodeValues: Record<string, string>;
   onNodeClick(nodePath: string): void;
   onNodePointerUp(nodePath: string): void;
   onLinkPointerDown(clientX: number, clientY: number): void;
@@ -84,6 +85,7 @@ function SchemaTreeView({
   side,
   initialExpanded,
   connectedPaths,
+  nodeValues,
   onNodeClick,
   onNodePointerUp,
   onLinkPointerDown,
@@ -120,6 +122,7 @@ function SchemaTreeView({
     const isExpanded = expandedPaths.has(node.path);
     const isAttribute = node.type === 'attribute' || node.name.startsWith('@');
     const isRepeating = node.maxOccurs === 'unbounded' || (typeof node.maxOccurs === 'number' && node.maxOccurs > 1);
+    const configuredValue = side === 'target' ? nodeValues[node.path] : undefined;
 
     const connector = (
       <span
@@ -199,6 +202,11 @@ function SchemaTreeView({
             {isAttribute ? <Tag16Regular /> : hasChildren ? '📁' : '📄'}
           </span>
           <span className="node-name">{node.name}</span>
+          {configuredValue !== undefined && (
+            <span className="node-constant-value" title={`Constant value: ${configuredValue || '<empty>'}`}>
+              = {configuredValue || '<empty>'}
+            </span>
+          )}
           {!node.isOptional && (
             <span className="node-badge required" title="Required">
               *
@@ -271,6 +279,7 @@ export class SchemaTreeRenderer extends HTMLElement {
   private onReload: () => void = () => {};
   private initialExpanded = new Set<string>();
   private connectedPaths = new Set<string>();
+  private nodeValues: Record<string, string> = {};
   private renderVersion = 0;
 
   public configure(
@@ -283,7 +292,8 @@ export class SchemaTreeRenderer extends HTMLElement {
     onNodeDoubleClick?: (node: SchemaNodeView) => void,
     onExpansionChange: () => void = () => {},
     onReload: () => void = () => {},
-    connectedPaths: Set<string> = new Set()
+    connectedPaths: Set<string> = new Set(),
+    nodeValues: Record<string, string> = {}
   ): void {
     this.schema = schema;
     this.side = side;
@@ -294,6 +304,7 @@ export class SchemaTreeRenderer extends HTMLElement {
     this.onExpansionChange = onExpansionChange;
     this.onReload = onReload;
     this.connectedPaths = new Set(connectedPaths);
+    this.nodeValues = { ...nodeValues };
     this.initialExpanded = initialExpanded ? new Set(initialExpanded) : new Set();
     if (schema.rootElement) {
       this.initialExpanded.add(schema.rootElement.path);
@@ -381,6 +392,7 @@ export class SchemaTreeRenderer extends HTMLElement {
         side={this.side}
         initialExpanded={this.initialExpanded}
         connectedPaths={this.connectedPaths}
+        nodeValues={this.nodeValues}
         onNodeClick={this.onNodeClick}
         onNodePointerUp={this.onNodePointerUp}
         onLinkPointerDown={this.onLinkPointerDown}

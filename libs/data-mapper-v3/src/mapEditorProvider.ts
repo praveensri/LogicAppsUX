@@ -684,9 +684,9 @@ export class MapEditorProvider implements vscode.CustomTextEditorProvider {
               this.logger.info(`${operation}: output XML saved (${Buffer.byteLength(formattedOutput)} bytes); Test Map succeeded.`);
               testMessages.push(`✓ Output saved: ${btmName}_output.xml`);
 
-              // Open the output file in VS Code
+              // Open the output beside the mapper as another tab in the active editor group.
               const outputUri = vscode.Uri.file(outputPath);
-              await vscode.window.showTextDocument(outputUri, { viewColumn: vscode.ViewColumn.Beside });
+              await vscode.window.showTextDocument(outputUri, { viewColumn: vscode.ViewColumn.Active });
 
               const resultSummary = `${testMessages.join('\n')}\n\n${'─'.repeat(50)}\n${formattedOutput}`;
               webviewPanel.webview.postMessage({

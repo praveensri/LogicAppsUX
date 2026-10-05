@@ -18,6 +18,47 @@ function mapWith(links: MapDocument['pages'][number]['links'], functoids: MapDoc
 }
 
 describe('XsltCompiler P1 compatibility', () => {
+  test('rejects circular functoid graphs before generating XSLT', () => {
+    const functoids = ['left', 'right'].map((id) => ({
+      id,
+      functoidId: 108,
+      category: FunctoidCategory.String,
+      name: `Trim ${id}`,
+      x: 100,
+      y: 100,
+      inputLinks: [],
+      outputLinks: [],
+      parameters: [],
+    }));
+    const links = [
+      {
+        id: 'left-right',
+        sourceId: 'left',
+        targetId: 'right',
+        sourceType: LinkEndpointType.Functoid,
+        targetType: LinkEndpointType.Functoid,
+      },
+      {
+        id: 'right-left',
+        sourceId: 'right',
+        targetId: 'left',
+        sourceType: LinkEndpointType.Functoid,
+        targetType: LinkEndpointType.Functoid,
+      },
+    ];
+
+    const result = new XsltCompiler().compile(mapWith(links, functoids));
+
+    expect(result.success).toBe(false);
+    expect(result.xslt).toBeUndefined();
+    expect(result.errors).toEqual([
+      expect.objectContaining({
+        message: expect.stringContaining('[Page 1] Circular functoid graph:'),
+        pageId: 'page1',
+      }),
+    ]);
+  });
+
   test('preserves full legacy script function declarations for all inline languages', () => {
     const scripts = [
       {

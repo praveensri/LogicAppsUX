@@ -118,6 +118,83 @@ describe('Copilot map patches', () => {
     ).toThrow('missing-target-functoid');
   });
 
+  test('rejects newly introduced circular functoid graphs', () => {
+    const forwardLink = {
+      id: 'a-b',
+      sourceId: 'a',
+      targetId: 'b',
+      sourceType: 'functoid' as const,
+      targetType: 'functoid' as const,
+    };
+    const withFunctoids: MapDocument = {
+      ...map,
+      pages: [
+        {
+          id: 'page1',
+          name: 'Page 1',
+          links: [forwardLink],
+          functoids: [
+            {
+              id: 'a',
+              functoidId: 107,
+              category: 'String' as never,
+              name: 'String Concatenate A',
+              x: 100,
+              y: 100,
+              inputLinks: [],
+              outputLinks: ['a-b'],
+              parameters: [],
+            },
+            {
+              id: 'b',
+              functoidId: 107,
+              category: 'String' as never,
+              name: 'String Concatenate B',
+              x: 200,
+              y: 100,
+              inputLinks: ['a-b'],
+              outputLinks: [],
+              parameters: [{ index: 0, type: 'link' as never, value: 'a-b' }],
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(() =>
+      applyMapPatches(withFunctoids, [
+        {
+          op: 'replace',
+          path: '/pages/0',
+          value: {
+            ...withFunctoids.pages[0],
+            links: [
+              forwardLink,
+              {
+                id: 'b-a',
+                sourceId: 'b',
+                targetId: 'a',
+                sourceType: 'functoid',
+                targetType: 'functoid',
+              },
+            ],
+            functoids: [
+              {
+                ...withFunctoids.pages[0].functoids[0],
+                inputLinks: ['b-a'],
+                parameters: [{ index: 0, type: 'link', value: 'b-a' }],
+              },
+              {
+                ...withFunctoids.pages[0].functoids[1],
+                outputLinks: ['b-a'],
+              },
+            ],
+          },
+        },
+      ])
+    ).toThrow('functoid-cycle');
+  });
+
   test('allows link and functoid IDs to overlap in their separate namespaces', () => {
     const updated = applyMapPatches(map, [
       {

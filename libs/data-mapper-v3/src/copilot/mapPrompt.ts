@@ -1,4 +1,5 @@
 import type { MapDocument } from '../model/mapModel';
+import { findFunctoidCycles } from '../model/mapGraph';
 import type { SchemaNode, SchemaTree } from '../model/schemaModel';
 import type { FunctoidSummary } from '../protocol/mapEditorProtocol';
 import { layoutMapPage } from './mapLayout';
@@ -501,6 +502,9 @@ function findMapIntegrityIssues(map: MapDocument, context?: MapPatchValidationCo
       } else {
         issues.push(`${page.id}:link:${link.id}:invalid-target-type:${String(link.targetType)}`);
       }
+    }
+    for (const cycle of findFunctoidCycles(page)) {
+      issues.push(`${page.id}:functoid-cycle:${cycle.functoidIds.join('->')}`);
     }
   }
   return issues;

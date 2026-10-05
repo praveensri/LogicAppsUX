@@ -78,7 +78,7 @@ async function waitFor(predicate, timeoutMilliseconds = 2000) {
   }
 }
 
-async function createHarness() {
+async function createHarness(options = {}) {
   const messages = [];
   const browserErrors = [];
   const virtualConsole = new VirtualConsole();
@@ -106,15 +106,15 @@ async function createHarness() {
 
   await waitFor(() => messages[0]?.type === 'ready' && !!dom.window.document.querySelector('[data-component="mapper-app"]'));
 
-  const map = createMap();
+  const map = options.map || createMap();
   dom.window.dispatchEvent(
     new dom.window.MessageEvent('message', {
       data: {
         type: 'init',
         data: {
           map,
-          sourceSchema: schema,
-          targetSchema: schema,
+          sourceSchema: options.sourceSchema === undefined ? schema : options.sourceSchema,
+          targetSchema: options.targetSchema === undefined ? schema : options.targetSchema,
           functoids,
         },
       },
