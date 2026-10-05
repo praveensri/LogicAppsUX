@@ -364,6 +364,14 @@ export class MapperAppController {
         this.redrawLinks();
         break;
       }
+      case 'schemaStateChanged': {
+        this.state.map = message.data.map;
+        this.state.sourceSchema = message.data.sourceSchema;
+        this.state.targetSchema = message.data.targetSchema;
+        this.renderView();
+        setTimeout(() => this.redrawLinks(), 150);
+        break;
+      }
       case 'schemaLoaded': {
         if (this.state.map) {
           for (const page of this.state.map.pages) {

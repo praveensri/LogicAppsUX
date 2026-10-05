@@ -28,7 +28,7 @@ const confirm = jest.mocked<(message: string, options: vscode.MessageOptions, ..
   vscode.window.showWarningMessage
 );
 
-async function setup(inlineSource = false, existingSide?: 'source' | 'target') {
+async function setup(inlineSource = false, existingSide?: 'source' | 'target', emitChangeOnApply = true) {
   jest.mocked(vscode.workspace.onDidChangeTextDocument).mockReturnValue({ dispose: jest.fn() });
   const initial = serializer.createNew('', '', 'Replacement');
   if (inlineSource) {
@@ -65,7 +65,12 @@ async function setup(inlineSource = false, existingSide?: 'source' | 'target') {
   };
   jest.mocked(vscode.workspace.applyEdit).mockImplementation(async (edit) => {
     const xml = jest.mocked(edit.replace).mock.calls[0][2];
-    await changeDocument(xml);
+    if (emitChangeOnApply) {
+      await changeDocument(xml);
+    } else {
+      text = xml;
+      document.version++;
+    }
     return true;
   });
   const provider = new MapEditorProvider({ extensionUri: vscode.Uri.file('.') } as vscode.ExtensionContext);
@@ -119,6 +124,24 @@ describe('schema replacement host transaction', () => {
       })
     );
     expect(vscode.workspace.fs.readFile).toHaveBeenCalledTimes(1);
+  });
+
+  test('pushes the selected schema to the webview even when the document-change event is delayed', async () => {
+    const host = await setup(false, undefined, false);
+    confirm.mockResolvedValue('Replace Schema');
+
+    await host.submit('source');
+
+    expect(vscode.workspace.applyEdit).toHaveBeenCalledTimes(1);
+    expect(host.postMessage).toHaveBeenLastCalledWith({
+      type: 'schemaStateChanged',
+      data: expect.objectContaining({
+        map: expect.objectContaining({
+          sourceSchema: expect.objectContaining({ location: 'new.xsd', rootName: 'Root' }),
+        }),
+        sourceSchema: expect.objectContaining({ filePath: expect.stringContaining('new.xsd') }),
+      }),
+    });
   });
 
   test.each(['browse', 'confirm', 'read', 'parse', 'dependency', 'edit', 'edit-error'] as const)(

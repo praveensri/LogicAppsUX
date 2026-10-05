@@ -14,6 +14,7 @@
   "categories": ["Other", "Visualization"],
   "keywords": ["biztalk", "mapper", "xslt", "xml", "schema", "data mapping", "functoids"],
   "main": "./out/extension.js",
+  "activationEvents": ["onCustomEditor:biztalkDataMapper.mapEditor"],
   "contributes": {
     "viewsContainers": {
       "activitybar": [
@@ -50,6 +51,11 @@
         "priority": "default"
       }
     ],
+    "configurationDefaults": {
+      "workbench.editorAssociations": {
+        "*.btm": "biztalkDataMapper.mapEditor"
+      }
+    },
     "commands": [
       {
         "command": "biztalkDataMapper.showLogs",

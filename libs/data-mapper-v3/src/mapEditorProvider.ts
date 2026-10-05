@@ -444,12 +444,22 @@ export class MapEditorProvider implements vscode.CustomTextEditorProvider {
               }
               if (!applied) {
                 vscode.window.showErrorMessage('Could not replace schema. The map was not changed.');
-              } else if (
-                !disposed &&
-                document.getText() === replacementXml &&
-                (message.side === 'source' ? sourceSchemaTree : targetSchemaTree) !== tree
-              ) {
-                await synchronizeSchemas(this.btmSerializer.deserialize(replacementXml), document.version);
+              } else if (!disposed) {
+                const appliedMap = this.btmSerializer.deserialize(replacementXml);
+                mapDoc = appliedMap;
+                if (message.side === 'source') {
+                  sourceSchemaTree = tree;
+                } else {
+                  targetSchemaTree = tree;
+                }
+                await webviewPanel.webview.postMessage({
+                  type: 'schemaStateChanged',
+                  data: {
+                    map: appliedMap,
+                    sourceSchema: sourceSchemaTree ?? null,
+                    targetSchema: targetSchemaTree ?? null,
+                  },
+                });
               }
               if (applied) {
                 this.logger.info(`${operation}: schema replaced; removed ${replacement.removedLinkCount} unmatched links.`);

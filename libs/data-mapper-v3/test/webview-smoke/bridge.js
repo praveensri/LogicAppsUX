@@ -48,6 +48,55 @@ runScenario('Toolbar, schema, and palette bridge events work', async () => {
     click(harness, targetTree.querySelector('.schema-expand-collapse-btn'));
     await harness.waitFor(() => targetTree.querySelectorAll('.tree-node').length >= 3);
 
+    const emptyMap = {
+      ...harness.map,
+      sourceSchema: {},
+      targetSchema: {},
+    };
+    dom.window.dispatchEvent(
+      new dom.window.MessageEvent('message', {
+        data: {
+          type: 'schemaStateChanged',
+          data: {
+            map: emptyMap,
+            sourceSchema: null,
+            targetSchema: null,
+          },
+        },
+      })
+    );
+    await harness.waitFor(() => sourceEmpty.hidden === false && targetEmpty.hidden === false);
+    assert.equal(sourceTree.hidden, true);
+    assert.equal(targetTree.hidden, true);
+
+    const selectedSourceSchema = {
+      filePath: 'selected-source.xsd',
+      rootElement: {
+        name: 'SelectedRoot',
+        path: '/SelectedRoot',
+        children: [{ name: 'SelectedValue', path: '/SelectedRoot/SelectedValue', children: [], attributes: [] }],
+        attributes: [],
+      },
+    };
+    dom.window.dispatchEvent(
+      new dom.window.MessageEvent('message', {
+        data: {
+          type: 'schemaStateChanged',
+          data: {
+            map: {
+              ...emptyMap,
+              sourceSchema: { location: 'selected-source.xsd', rootName: 'SelectedRoot' },
+            },
+            sourceSchema: selectedSourceSchema,
+            targetSchema: null,
+          },
+        },
+      })
+    );
+    await harness.waitFor(() => sourceTree.hidden === false && sourceTree.textContent.includes('SelectedRoot'));
+    assert.equal(sourceEmpty.hidden, true);
+    assert.equal(targetEmpty.hidden, false);
+
     const paletteItem = document.querySelector('biztalk-functoid-palette .palette-item');
     assert.equal(paletteItem.querySelector('.item-name')?.textContent, 'Concatenate');
     assert.equal(dom.window.getComputedStyle(paletteItem).height, '30px');
